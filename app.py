@@ -390,7 +390,7 @@ You must:
 1. Follow the provided rules exactly.
 2. Return only a valid JSON object — no extra commentary or formatting.
 3. The JSON must contain:
-   - "questions": [ list of original question strings exactly as provided ]
+   - "questions": [ keys from the questions file"]
    - "code": "..." (Python code that creates a dict called `results` with each question string as a key and its computed answer as the value)
 4. Your Python code will run in a sandbox with:
    - pandas, numpy, matplotlib available
@@ -480,37 +480,6 @@ def run_agent_safely(llm_input: str) -> Dict:
         return {"error": str(e)}
 
 
-# -----------------------------
-# FastAPI endpoint
-# -----------------------------
-# @app.post("/api/analyze")
-# async def analyze_data(file: UploadFile = File(...)):
-#     """
-#     Accepts a text file (questions.txt) - each question may be multi-line but the whole file is sent.
-#     We pass the file contents as the agent input.
-#     """
-#     try:
-#         raw = (await file.read()).decode("utf-8")
-#         # Build LLM input
-#         llm_input = f"Questions:\n{raw}\nRespond with a JSON object containing 'questions' and 'code' only."
-#         # Run agent safely with thread executor (respect LLM_TIMEOUT_SECONDS)
-#         import concurrent.futures
-#         with concurrent.futures.ThreadPoolExecutor() as ex:
-#             fut = ex.submit(run_agent_safely, llm_input)
-#             try:
-#                 result = fut.result(timeout=LLM_TIMEOUT_SECONDS)
-#             except concurrent.futures.TimeoutError:
-#                 raise HTTPException(408, "Processing timeout")
-#         if "error" in result:
-#             raise HTTPException(500, detail=result["error"])
-#         return JSONResponse(content=result)
-#     except HTTPException as he:
-#         raise he
-#     except Exception as e:
-#         logger.exception("analyze_data failed")
-#         raise HTTPException(500, detail=str(e))
-
-
 @app.post("/api/analyze")
 async def analyze_data(
     questions_file: UploadFile = File(...),
@@ -575,7 +544,7 @@ async def analyze_data(
                 "2) DO NOT call scrape_url_to_dataframe() or fetch any external data.\n"
                 "3) Use only the uploaded dataset for answering questions.\n"
                 "4) Produce a final JSON object with keys:\n"
-                '   - "questions": [ ... original question strings ... ]\n'
+                '   - "questions": keys provided in questions txt file\n'
                 '   - "code": "..."  (Python code that fills `results` with exact question strings as keys)\n'
                 "5) For plots: use plot_to_base64() helper to return base64 image data under 100kB.\n"
             )
@@ -659,7 +628,8 @@ def run_agent_safely_unified(llm_input: str, pickle_path: str = None) -> Dict:
             return {"error": f"Execution failed: {exec_result.get('message')}", "raw": exec_result.get("raw")}
 
         results_dict = exec_result.get("result", {})
-        return {q: results_dict.get(q, "Answer not found") for q in questions}
+        print(f"Results dict: {results_dict}")  
+        return results_dict
 
     except Exception as e:
         logger.exception("run_agent_safely_unified failed")
